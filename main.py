@@ -1,10 +1,10 @@
 from fastapi import FastAPI
-from process_image import router  # Import the router
+import process_image  # Import the endpoints module
 
 app = FastAPI()
 
-# Include the routes from process_image.py
-app.include_router(router)
+# Include the routes from endpoints.py
+app.include_router(process_image.router)
 
 @app.get("/")
 def home():
