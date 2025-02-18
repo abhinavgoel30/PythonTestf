@@ -5,3 +5,4 @@ tensorflow==2.12.0
 tensorflow-hub==0.13.0
 numpy==1.23.5
 gunicorn==20.1.0
+python-multipart==0.0.9
