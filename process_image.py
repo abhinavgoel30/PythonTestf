@@ -1,6 +1,6 @@
 from fastapi import APIRouter, File, UploadFile
 from fastapi.responses import Response
-from PIL import Image, ImageDraw
+from PIL import Image
 import io
 import tensorflow as tf
 import tensorflow_hub as hub
@@ -17,10 +17,15 @@ if gpus:
     except RuntimeError as e:
         print(f"GPU Memory Error: {e}")
 
-# ✅ Lazy model loading (prevents memory overload)
-def load_model():
-    print("Loading TensorFlow model...")
-    return hub.load("https://tfhub.dev/google/magenta/arbitrary-image-stylization-v1-256/2")
+# ✅ Global Model Loading (Prevent reloading on each request)
+model = None
+
+def get_model():
+    global model
+    if model is None:
+        print("Loading TensorFlow model...")
+        model = hub.load("https://tfhub.dev/google/magenta/arbitrary-image-stylization-v1-256/2")
+    return model
 
 # ✅ Process an uploaded image
 @router.post("/process-image")
@@ -34,11 +39,11 @@ async def process_image(file: UploadFile = File(...)):
         image = np.array(image) / 255.0
         image = np.expand_dims(image, axis=0).astype(np.float32)
 
-        # ✅ Load the model only when needed
-        model = load_model()
+        # ✅ Load the model only once (fixes missing argument issue)
+        model = get_model()
 
-        # ✅ Apply model transformation
-        stylized_image = model(tf.constant(image))[0]
+        # ✅ Apply model transformation (Ensure both parameters are provided)
+        stylized_image = model(tf.constant(image), tf.constant(image))[0]
 
         # ✅ Convert back to PIL Image
         stylized_image = np.array(stylized_image[0]) * 255
@@ -53,4 +58,5 @@ async def process_image(file: UploadFile = File(...)):
         return Response(content=output_buffer.getvalue(), media_type="image/png")
 
     except Exception as e:
+        print(f"🔥 Error processing image: {str(e)}")
         return {"error": f"Failed to process image: {str(e)}"}
